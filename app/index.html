@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="hummod-token" content="__TOKEN__"><title>HumMod Studio</title><link rel="icon" href="/assets/hummod.ico" sizes="16x16 20x20 24x24 32x32 40x40 48x48 64x64 128x128 256x256"><link rel="icon" href="/assets/hummod-mark.svg" type="image/svg+xml"><link rel="preload" href="/assets/fonts/DMSans.ttf" as="font" type="font/ttf" crossorigin><link rel="preload" href="/assets/fonts/Lora.ttf" as="font" type="font/ttf" crossorigin><link rel="stylesheet" href="/style.css"></head>
+<body><div class="app-frame">
+<aside class="sidebar">
+<a class="brand" href="#overview"><img src="/assets/hummod-mark.svg" alt="" width="38" height="38"><span>HumMod<small>STUDIO</small></span></a>
+<button class="model-switch" id="model-info"><span class="model-initial"><span data-icon="folder"></span></span><span class="project-label"><b id="project-name">Your experiments</b><small id="project-save-status">Local physiology workspace</small></span><span data-icon="down"></span></button>
+<div class="nav-label">Workspace</div>
+<button class="nav-item" data-route="overview"><span data-icon="grid"></span>Overview</button>
+<button class="nav-item" data-route="experiments"><span data-icon="folder"></span>Experiments<span id="run-count" class="nav-count">0</span></button>
+<button class="nav-item" data-route="favorites"><span data-icon="star"></span>Favorites<span id="favorite-count" class="nav-count">0</span></button>
+<button class="nav-item" data-route="native"><span data-icon="layers"></span>All functions</button>
+<div class="nav-label systems-label">Model explorer<span id="systems-count">—</span></div>
+<nav id="navigation" aria-label="Complete model navigation"></nav>
+<div class="sidebar-footer"><button id="settings" class="nav-item"><span data-icon="settings"></span>Settings</button><button id="help" class="nav-item"><span data-icon="help"></span>Help & model notes</button><div class="version"><span class="engine-dot"></span><div>Clemmer Salt <span>3.0.4</span></div></div></div>
+</aside>
+<section class="workspace">
+<header class="topbar"><button id="sidebar-toggle" class="icon-button" aria-label="Toggle sidebar"><span data-icon="sidebar"></span></button><div class="breadcrumb" id="breadcrumb">Workspace<span>/</span>Overview</div><div class="topbar-right"><button class="search-trigger" id="search-open"><span data-icon="search"></span><span>Find anything…</span><kbd>Ctrl K</kbd></button><span class="connection" id="connection"><i></i>Offline</span><button class="icon-button" data-action="projects" aria-label="Open experiments"><span data-icon="folder"></span></button><button class="icon-button" data-action="native-menu" aria-label="Original engine commands"><span data-icon="external"></span></button></div></header>
+<main id="main"></main><footer class="statusbar"><span id="status-text">HumMod 3.0.4 · Local engine</span><span id="sample-status">Awaiting engine</span></footer>
+</section></div>
+<div id="toast" role="status" aria-live="polite"></div><dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
+<dialog id="search-dialog" aria-label="Search model"><div class="search-box"><span data-icon="search"></span><input id="search-input" placeholder="Search pages, systems or variables…" autocomplete="off"><kbd>Esc</kbd></div><div id="search-results"></div><div class="search-footer">↑ ↓ Select　 ↵ Open<span>Search every menu level</span></div></dialog>
+<script src="/app.js" defer></script></body></html>

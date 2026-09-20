@@ -1,0 +1,17 @@
+.cache/
+dist/
+node_modules/
+app/engine/
+app/workspace-state/
+app/sessions/
+app/Experiments/
+*.SOL
+*.ICS
+*.hummod
+*.log
+*.pid
+*.tmp
+*.exe
+*.dll
+*.nupkg
+*.zip
