@@ -73,6 +73,7 @@ class NativeBridge {
   // Only attach to our independent copy, never another HumMod session.
   var matches=Process.GetProcessesByName("HumMod").Where(p=>{try{return string.Equals(p.MainModule.FileName,Path.Combine(root,"HumMod.EXE"),StringComparison.OrdinalIgnoreCase);}catch{return false;}}).ToArray();
   if(args.Length==0) throw new Exception("Command required");
+  if(args[0]=="status"){Console.WriteLine(new JavaScriptSerializer().Serialize(new{running=matches.Length==1,pid=matches.Length==1?matches[0].Id:0}));return 0;}
   if(args[0]=="start") {if(matches.Length==0) {var p=Process.Start(new ProcessStartInfo(Path.Combine(root,"HumMod.EXE")){WorkingDirectory=root,UseShellExecute=true,WindowStyle=ProcessWindowStyle.Hidden});Console.WriteLine(p.Id);}return 0;}
   if(matches.Length!=1) throw new Exception("Expected one dedicated HumMod process, found "+matches.Length);
   var process=matches[0];var wins=Windows(process.Id);var main=wins.FirstOrDefault(h=>GetMenu(h)!=IntPtr.Zero);

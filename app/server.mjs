@@ -14,7 +14,7 @@ let engine=defaultEngine,readOnly=false,replaying=false,restoreProgress='',profi
 try{if(store.prefs.sourcePath)profile=validateSource(store.prefs.sourcePath);}catch(e){store.prefs.sourceError=e.message;}
 const token=crypto.randomBytes(24).toString('hex'),port=Number(process.env.HUMMOD_UI_PORT||4318);
 let catalog=profile?buildCatalog(profile.root):{nodes:[],panels:{},lists:{},stats:{panels:0,branches:0,leaves:0}};
-let data=null,menu=[],connected=false,busy=false,error=null,activity=[],lastExport=null;
+let data=null,menu=[],connected=false,busy=false,error=null,activity=[],lastExport=null,enginePid=null;
 fs.mkdirSync(sessions,{recursive:true});
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 async function native(...args){const {stdout}=await exec(bridge,args.map(String),{cwd:dir,windowsHide:true,timeout:330000,maxBuffer:8*1024*1024,env:{...process.env,HUMMOD_ENGINE_DIR:engine}});return stdout.trim();}
@@ -45,13 +45,27 @@ async function attach(){
  await native('start');let snap;
  for(let i=0;i<200;i++){try{snap=await inspect();if(snap.menu.length>10&&snap.windows.find(w=>w.window.handle===snap.main)?.window.enabled)break;}catch{}await delay(100);}
  if(!snap||snap.menu.length<=10)throw Error('Engine not ready. Inspect the original window.');
- menu=flatMenu(snap.menu);connected=true;await native('hide');
+ menu=flatMenu(snap.menu);enginePid=snap.pid;connected=true;await native('hide');
 }
 const engineFor=p=>p.origin==='legacy'?defaultEngine:path.join(store.root,'engines',p.id);
-async function isAlive(){try{await inspect();return true;}catch{return false;}}
+async function isAlive(){try{return JSON.parse(await native('status')).running;}catch{return false;}}
+function initialCheckpointOnly(p){return p?.origin==='recorded'&&p.journal.length===0&&p.checkpoints.length===1&&p.checkpoints[0].kind==='initial'&&p.checkpoints[0].time===0;}
+function canReconnect(){return !!store.active&&((store.active.replayable&&!store.active.pending)||initialCheckpointOnly(store.active));}
+function disconnected(){
+ connected=false;enginePid=null;readOnly=!!store.active;
+ error=canReconnect()?'The engine has stopped. Saved results are intact. Reconnect to restore and verify the last saved state.':'The engine has stopped. Saved results remain available for viewing and export. Create a new experiment to continue.';
+}
+async function checkHealth(force=false){
+ if(!connected||(!force&&busy))return;
+ const checkedEngine=engine,checkedPid=enginePid;
+ try{const status=JSON.parse(await native('status'));if(engine===checkedEngine&&enginePid===checkedPid&&(!status.running||status.pid!==checkedPid))disconnected();}
+ catch{if(engine===checkedEngine&&enginePid===checkedPid)disconnected();}
+}
+async function requireEngine(){await checkHealth(true);if(!connected)throw Error(error||'The engine is offline. Open or reconnect an experiment first.');}
+
 function commit(kind,label,command){store.commit(lastExport,data,kind,label,command);}
 function equalData(a,b){return a.index===b.index&&a.samples===b.samples&&Object.keys(a.values).length===Object.keys(b.values).length&&Object.keys(a.values).every(k=>a.values[k]===b.values[k])&&Object.keys(a.series).every(k=>JSON.stringify(a.series[k])===JSON.stringify(b.series[k]));}
-async function saveCurrent(label='Saved checkpoint'){if(connected&&!readOnly){await refresh();commit('save',label);}}
+async function saveCurrent(label='Saved checkpoint'){await checkHealth(true);if(connected&&!readOnly){await refresh();commit('save',label);}}
 async function detachCurrent(){
  await saveCurrent('Before switching experiments');
  // Legacy sessions have no reproducible journal. Keep their original process alive.
@@ -64,10 +78,11 @@ async function openProject(input){
  // Validate the checkpoint before leaving the current experiment.
  const previous={active:store.active,folder:store.folder};store.active=p;store.folder=folder;let saved;
  try{saved=store.checkpoint();parseSolution(fs.readFileSync(saved.file,'utf8'));}finally{store.active=previous.active;store.folder=previous.folder;}
- if(store.folder===folder&&connected)return;
+ await checkHealth(true);
+ if(store.folder===folder&&connected&&!readOnly)return;
  await detachCurrent();store.activate(folder,p);engine=engineFor(p);const expected=parseSolution(fs.readFileSync(saved.file,'utf8'));
  const alive=await isAlive();
- if(!alive&&(!p.replayable||p.pending)){
+ if(!alive&&(!p.replayable||p.pending)&&!initialCheckpointOnly(p)){
   data=expected;lastExport=saved.file;readOnly=true;restoreProgress='';addActivity('Saved results opened. This session has no verified replay journal.');return;
  }
  try{
@@ -87,7 +102,8 @@ async function openProject(input){
    if(alive&&p.origin==='legacy'){p.replayable=false;commit('save','Live session recovered');}
    else throw Error('Restored engine does not exactly match the saved solution. Continuing is disabled; saved results remain available.');
   }
-  p.pending=false;store.save();readOnly=false;addActivity(alive?'Reconnected to the live experiment':'Restored and verified every saved variable and sample');
+  if(initialCheckpointOnly(p)&&(!p.replayable||p.pending)){fs.copyFileSync(path.join(folder,'experiment.hummod'),path.join(folder,'before-recovery-'+Date.now()+'.json'),fs.constants.COPYFILE_EXCL);p.replayable=true;}
+  p.pending=false;store.save();readOnly=false;error=null;addActivity(alive?'Reconnected to the live experiment':'Restored and verified every saved variable and sample');
  }catch(e){readOnly=true;data=expected;lastExport=saved.file;throw e;}
  finally{replaying=false;restoreProgress='';}
 }
@@ -128,10 +144,10 @@ async function setField(body){
  if(field.kind!=='actionbutton'&&(!Number.isFinite(data.values[field.name])||Math.abs(data.values[field.name]-value)>1e-7*Math.max(1,Math.abs(value))))throw Error('Engine read-back differs from the requested value. Inspect the original page.');
  addActivity(field.kind==='actionbutton'?`Invoked ${field.label}`:`${field.label} → ${value}`);
 }
-function state(){return {connected,busy,error,data,activity,readOnly,restoreProgress,project:store.summary(),preferences:store.prefs,configured:!!profile,durations:menu.filter(x=>x.path.startsWith('Go/')&&x.id>0&&x.id<65535).map(x=>({label:x.label,id:x.id})),engine:'HumMod 3.0.4',nativeMenu:menu.filter(x=>x.id>0&&x.id<65535).map(x=>({id:x.id,path:x.path,label:x.label})),nativeDialogs:[]};}
+function state(){return {canReconnect:!connected&&canReconnect(),connected,busy,error,data,activity,readOnly,restoreProgress,project:store.summary(),preferences:store.prefs,configured:!!profile,durations:menu.filter(x=>x.path.startsWith('Go/')&&x.id>0&&x.id<65535).map(x=>({label:x.label,id:x.id})),engine:'HumMod 3.0.4',nativeMenu:menu.filter(x=>x.id>0&&x.id<65535).map(x=>({id:x.id,path:x.path,label:x.label})),nativeDialogs:[]};}
 async function operate(route,body){
- if(route==='/api/show'){await native('show');if(store.active){store.active.replayable=false;store.save();}return {};}
- if(route==='/api/stop'){if(store.active){store.active.replayable=false;store.save();}await native('command',6);return {};}
+ if(route==='/api/show'){await requireEngine();await native('show');if(store.active){store.active.replayable=false;store.save();}return {};}
+ if(route==='/api/stop'){await requireEngine();if(store.active){store.active.replayable=false;store.save();}await native('command',6);return {};}
  if(busy)throw Error('Another operation is in progress. Please wait.');
  busy=true;error=null;
  try{
@@ -144,14 +160,14 @@ async function operate(route,body){
   if(route==='/api/bootstrap')await bootstrap();
   else if(route==='/api/project/create')await createProject(body);
   else if(route==='/api/project/open')await openProject(String(body.path||''));
-  else if(route==='/api/project/save'){if(readOnly)throw Error('This experiment is open for viewing only');await saveCurrent();}
+  else if(route==='/api/project/save'){await requireEngine();if(readOnly)throw Error('This experiment is open for viewing only');await saveCurrent();}
   else if(route==='/api/shutdown'){
    await saveCurrent('Before closing');if(connected)await native('close');
    setTimeout(()=>server.close(()=>process.exit(0)),300);return {ok:true};
   }
   else if(route==='/api/connect')await connect();
   else{
-   if(!connected)throw Error('Create or open an experiment first.');
+   await requireEngine();
    if(readOnly&&!['/api/native-panel'].includes(route))throw Error('This experiment is open for viewing only. Create a new experiment to run the model.');
    if(route==='/api/refresh'){
     const before=data;await refresh();if(store.active&&before&&!equalData(before,data))store.active.replayable=false;
@@ -174,7 +190,7 @@ async function operate(route,body){
    else throw Error('Unknown operation');
   }
   return {ok:true};
- }catch(e){error=e.stderr?.trim()||e.message;if(store.active?.pending){store.active.replayable=false;store.save();}throw Error(error);}finally{busy=false;}
+ }catch(e){error=e.stderr?.trim()||e.message;if(store.active?.pending){store.active.replayable=false;store.save();}await checkHealth(true);throw Error(error);}finally{busy=false;}
 }
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -185,7 +201,7 @@ const server=http.createServer(async(req,res)=>{
  try{
   if(url.pathname.startsWith('/api/')){
    if(req.headers['x-hummod-token']!==token||(req.headers.origin&&req.headers.origin!==origin))return json(403,{error:'Forbidden'});
-   if(req.method==='GET'&&url.pathname==='/api/state')return json(200,state());
+   if(req.method==='GET'&&url.pathname==='/api/state'){await checkHealth();return json(200,state());}
    if(req.method==='GET'&&url.pathname==='/api/catalog')return json(200,catalog);
    if(req.method==='GET'&&url.pathname==='/api/checkpoint'){const cp=store.checkpoint(url.searchParams.get('id'));res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="HumMod-'+cp.entry.kind+'-'+cp.entry.time+'min.SOL"'});return fs.createReadStream(cp.file).pipe(res);}
    if(req.method==='GET'&&url.pathname==='/api/export'){

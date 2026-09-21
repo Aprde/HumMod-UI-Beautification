@@ -1,7 +1,7 @@
 param([string]$CacheDirectory = (Join-Path $PSScriptRoot '.cache'))
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$version = '0.1.0'
+$version = '0.1.1'
 $nodeVersion = '22.23.2'
 $sdkVersion = '1.0.4191.47'
 $nodeHash = '1177b4137ba5adaa56354ae40f1080c7450e8ae09cecb47da459d1c52ac99f97'

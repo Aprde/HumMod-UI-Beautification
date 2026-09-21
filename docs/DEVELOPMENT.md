@@ -47,3 +47,11 @@ Validation covered all 914 menu/page nodes and the native control counts of 730 
 For an isolated desktop startup check, set `HUMMOD_UI_PORT` and `HUMMOD_DESKTOP_DATA_DIR` to test-only values and launch `HumMod Studio.exe --smoke-test`. It writes a UI screenshot, icon status and a small startup report to the selected test directory. The application window closes after the check; the local service is left running.
 
 Run `node scripts/check.mjs` to check result parsing, experiment files, checkpoint checksums and icon sizes without an installed engine. Full simulation checks require the supported local HumMod installation.
+
+## Engine disconnections
+
+The interface checks the dedicated engine process every three seconds and before commands. If it has exited or been replaced, controls are disabled without beginning a new journal operation. Reconnect replays only recoverable experiments and verifies all saved values and samples before enabling changes. Switching experiments remains possible when an engine is missing.
+
+An initial-only recorded experiment incorrectly marked pending by an older failed edit can be recovered from its initial checkpoint. Recovery first verifies the original engine output exactly, then backs up the old manifest before clearing the flags. Other interrupted or unrecorded sessions remain view-only.
+
+After building, run `node scripts/disconnect.mjs "C:\HumMod" "dist\HumMod-UI-Beautification-v0.1.1-windows-x64\app"` for isolated engine-exit and recovery tests. It creates disposable experiments in the temporary directory and never uses an existing workspace session.

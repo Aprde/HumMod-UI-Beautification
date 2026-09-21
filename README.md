@@ -18,6 +18,7 @@ No Node.js or development tools are required. If prompted, install [Microsoft Ed
 - **Run model**: select a duration and run the simulation. Each run is saved automatically.
 - **Experiments**: browse records, export SOL results, or open another experiment.
 - **Save experiment / Ctrl+S**: save manually. The last experiment opens automatically at startup.
+- **Reconnect engine**: if the engine stops, restore the last saved state and verify it before continuing.
 - **Settings → Save & quit**: save and exit. Closing only the window keeps the experiment running in the background.
 
 Experiments stay in the folder you choose. Copy the entire folder to back one up. Reopening a long experiment may take time. Some specialized plots and settings open in the original HumMod window.
