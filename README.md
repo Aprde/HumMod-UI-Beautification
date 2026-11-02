@@ -27,6 +27,10 @@ Experiments stay in the folder you choose. Copy the entire folder to back one up
 
 ![Interface preview](docs/preview.png)
 
+## MCP server (for coding agents)
+
+`mcp/hummod_mcp_server.py` exposes the engine operations (navigate panels, press controls, run, export SOL, read variables) as MCP tools, so agent frameworks such as ZCode or Claude can drive HumMod experiments conversationally. Setup and registration snippets in [docs/MCP.md](docs/MCP.md).
+
 ## Compatibility and adaptation
 
 Version 3.0.4 was chosen as a stable baseline with flexible parameter controls. This release supports only **HumMod Clemmer Salt 3.0.4**; other HumMod versions, including QCP, have not been adapted or validated.
