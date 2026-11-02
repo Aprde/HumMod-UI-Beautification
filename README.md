@@ -27,6 +27,10 @@ Experiments stay in the folder you choose. Copy the entire folder to back one up
 
 ![Interface preview](docs/preview.png)
 
+## Scripting and agents
+
+The native bridge is a standalone console program (`native/NativeBridge.cs`) that drives the engine with window messages - scripts, schedulers and coding agents can use the same commands as the interface (navigate panels, press controls, run, export SOL). See [docs/CLI.md](docs/CLI.md).
+
 ## Compatibility and adaptation
 
 Version 3.0.4 was chosen as a stable baseline with flexible parameter controls. This release supports only **HumMod Clemmer Salt 3.0.4**; other HumMod versions, including QCP, have not been adapted or validated.
